@@ -17,6 +17,7 @@ namespace AntiWheelPop
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_MotorSuspension), false)]
     class WheelComp : MyGameLogicComponent
     {
+        bool init = false;
         IMyMotorSuspension wheel;
         ITerminalAction addWheel;
         float spawnHeight;
@@ -32,7 +33,7 @@ namespace AntiWheelPop
 
         public override void UpdateBeforeSimulation100 ()
         {
-            if (MyAPIGateway.Session == null || !MyAPIGateway.Session.IsServer)
+            if (init || MyAPIGateway.Session == null || !MyAPIGateway.Session.IsServer)
                 return;
 
             if (wheel.CubeGrid?.Physics == null)
@@ -45,6 +46,7 @@ namespace AntiWheelPop
             MyAPIGateway.TerminalActionsHelper.GetActions(wheel.GetType(), actions, (a) => a.Id == "Add Top Part");
             if (actions.Count > 0)
                 addWheel = actions [0];
+            init = true;
             NeedsUpdate = MyEntityUpdateEnum.EACH_FRAME | MyEntityUpdateEnum.EACH_100TH_FRAME;
         }
 
