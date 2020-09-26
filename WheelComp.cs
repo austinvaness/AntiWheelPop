@@ -16,8 +16,9 @@ using VRage.ObjectBuilders;
 using VRage.Utils;
 using VRageMath;
 using VRage;
+using Sandbox.Game.Entities;
 
-namespace AntiWheelPop
+namespace avaness.AntiWheelPop
 {
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_MotorSuspension), false)]
     class WheelComp : MyGameLogicComponent
@@ -25,6 +26,8 @@ namespace AntiWheelPop
         IMyMotorSuspension wheel;
         IMyCubeGrid grid;
         MyObjectBuilder_CubeGrid builder;
+        MyCubeBlockDefinition definition;
+        //Vector3D pos;
         bool listening;
         ITerminalAction addWheel;
 
@@ -103,17 +106,40 @@ namespace AntiWheelPop
         private void GetOB (IMyCubeGrid grid)
         {
             builder = (MyObjectBuilder_CubeGrid)grid.GetObjectBuilder(true);
+            foreach(var cube in ((MyCubeGrid)grid).GetFatBlocks())
+            {
+                if (cube is IMyAttachableTopBlock)
+                {
+                    definition = cube.BlockDefinition;
+                    return;
+                }
+            }
         }
 
         private void SpawnWheel ()
         {
-            Vector3D pos = Vector3D.Transform(wheel.DummyPosition, wheel.CubeGrid.WorldMatrix);
-            builder.PositionAndOrientation = new MyPositionAndOrientation(pos, wheel.WorldMatrix.Forward, wheel.WorldMatrix.Up);
+            MatrixD topGridMatrix = GetTopGridMatrix();
+            if (definition != null && definition.Center != Vector3.Zero)
+                topGridMatrix.Translation = Vector3D.Transform(-definition.Center * MyDefinitionManager.Static.GetCubeSize(definition.CubeSize), topGridMatrix);
+            builder.PositionAndOrientation = new MyPositionAndOrientation(topGridMatrix);
             grid = (IMyCubeGrid)MyAPIGateway.Entities.CreateFromObjectBuilderAndAdd(builder);
-            builder = null;
-            grid.OnClose += TopGrid_OnClose;
-            listening = true;
-            wheel.Attach();
+            if (grid != null)
+            {
+                builder = null;
+                grid.OnClose += TopGrid_OnClose;
+                listening = true;
+                wheel.Attach();
+            }
+        }
+
+        protected MatrixD GetTopGridMatrix()
+        {
+            Vector3D position = Vector3D.Transform(wheel.DummyPosition + wheel.LocalMatrix.Forward * (float)wheel.Height, wheel.CubeGrid.WorldMatrix);
+            MatrixD worldMatrix = wheel.WorldMatrix;
+            Vector3D forward = worldMatrix.Forward;
+            worldMatrix = wheel.WorldMatrix;
+            Vector3D up = worldMatrix.Up;
+            return MatrixD.CreateWorld(position, forward, up);
         }
     }
 }
